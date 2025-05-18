@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progressive Sliding Puzzle</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #45b7af;
+            --background-color: #f5f5f5;
+            --text-color: #333;
+            --dark-blue: #1a237e;
+            --royal-blue: #4169e1;
+            --purple: #9c27b0;
+            --pink-color: #ff69b4;
+            --light-pink: #ffd1dc;
+            --warm-yellow: #ffd700;
+            --warm-orange: #ff7f50;
+            --light-orange: #fff3e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .cover-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--warm-yellow), var(--warm-orange));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .cover-title {
+            font-size: 3.5em;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            animation: float 3s ease-in-out infinite;
+            font-weight: bold;
+        }
+
+        .cover-image {
+            width: 300px;
+            height: 300px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            transition: transform 0.3s;
+        }
+
+        .cover-image:hover {
+            transform: scale(1.05);
+        }
+
+        .cover-title::before,
+        .cover-title::after {
+            content: '❤';
+            color: white;
+            margin: 0 15px;
+            font-size: 0.8em;
+            animation: heartbeat 1.5s ease-in-out infinite;
+            display: inline-block;
+        }
+
+        .start-button {
+            padding: 15px 40px;
+            font-size: 1.5em;
+            background: white;
+            color: var(--warm-orange);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .start-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            background: var(--light-orange);
+        }
+
+        .game-container {
+            display: none;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .game-container.active {
+            display: block;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, var(--warm-yellow), var(--warm-orange));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
+        .stats {
+            background: white;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+        }
+
+        .stat-label {
+            font-size: 1.1em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--warm-orange);
+        }
+
+        .puzzle-container {
+            position: relative;
+            width: min(80vw, 500px);
+            aspect-ratio: 1;
+            margin: 20px auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .puzzle-grid {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            gap: 2px;
+            background: #333;
+            padding: 2px;
+        }
+
+        .puzzle-tile {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .puzzle-tile::after {
+            content: attr(data-number);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .puzzle-tile.show-number::after {
+            opacity: 0.7;
+        }
+
+        .puzzle-tile:hover {
+            transform: scale(0.98);
+        }
+
+        .empty {
+            background: #333 !important;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            background: var(--warm-orange);
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin: 0 10px;
+        }
+
+        button:hover {
+            background: var(--warm-yellow);
+        }
+
+        .hint-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .hint-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .message-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .message-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        .end-image {
+            width: 300px;
+            height: 300px;
+            border-radius: 10px;
+            margin: 20px auto;
+            display: none;
+        }
+
+        .message-title {
+            font-size: 1.5em;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .message-text {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="cover-page" id="coverPage">
+        <h1 class="cover-title">520-拼圖挑戰</h1>
+        <img src="cover_image.png" alt="Friends solving puzzle" class="cover-image">
+        <button class="start-button" id="startButton">開始挑戰</button>
+    </div>
+
+    <div class="game-container" id="gameContainer">
+        <h1>520-拼圖挑戰</h1>
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">關卡</span>
+                <span class="stat-value" id="level">1 of 5</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">步數</span>
+                <span class="stat-value" id="moves">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">分數</span>
+                <span class="stat-value" id="score">0</span>
+            </div>
+        </div>
+        <div class="puzzle-container">
+            <div class="puzzle-grid" id="puzzle"></div>
+        </div>
+        <div class="controls">
+            <button id="restartBtn">重新開始</button>
+            <button id="hintBtn">顯示圖片</button>
+            <button id="numbersBtn">顯示數字</button>
+        </div>
+    </div>
+
+    <div class="hint-container">
+        <img class="hint-image" id="hintImage" alt="Puzzle hint">
+    </div>
+
+    <div class="message-overlay" id="messageOverlay">
+        <div class="message-content">
+            <div class="message-title" id="messageTitle"></div>
+            <div class="message-text" id="messageText"></div>
+            <img src="end_image.png" alt="Congratulations" class="end-image" id="endImage">
+            <button id="messageButton">下一關</button>
+        </div>
+    </div>
+
+    <script>
+        class SlidingPuzzle {
+            constructor() {
+                this.images = [
+                    'puzzle-image.jpg',    // Level 1
+                    'puzzle-image2.jpg',   // Level 2
+                    'puzzle-image3.png',   // Level 3
+                    'puzzle-image4.png',   // Level 4
+                    'puzzle-image5.jpg'    // Level 5
+                ];
+                this.currentLevel = 1;
+                this.moves = 0;
+                this.score = 0;
+                this.grid = [];
+                this.emptyTile = { row: 0, col: 0 };
+                this.isGameActive = true;
+                this.showNumbers = false;
+
+                // Initialize cover page
+                this.coverPage = document.getElementById('coverPage');
+                this.gameContainer = document.getElementById('gameContainer');
+                document.getElementById('startButton').addEventListener('click', () => this.startGame());
+
+                // Load saved progress if available
+                this.loadProgress();
+
+                // Initialize UI elements
+                this.puzzle = document.getElementById('puzzle');
+                this.moveCounter = document.getElementById('moves');
+                this.scoreDisplay = document.getElementById('score');
+                this.levelDisplay = document.getElementById('level');
+                this.hintContainer = document.querySelector('.hint-container');
+                this.hintImage = document.getElementById('hintImage');
+                this.messageOverlay = document.getElementById('messageOverlay');
+                this.messageTitle = document.getElementById('messageTitle');
+                this.messageText = document.getElementById('messageText');
+                
+                // Set up event listeners
+                document.getElementById('restartBtn').addEventListener('click', () => this.restartGame());
+                document.getElementById('hintBtn').addEventListener('click', () => this.toggleHint());
+                document.getElementById('numbersBtn').addEventListener('click', () => this.toggleNumbers());
+                document.getElementById('messageButton').addEventListener('click', () => this.hideMessage());
+
+                // Initialize the game
+                this.initializeLevel();
+            }
+
+            loadProgress() {
+                const savedProgress = localStorage.getItem('puzzleProgress');
+                if (savedProgress) {
+                    const progress = JSON.parse(savedProgress);
+                    this.currentLevel = progress.level;
+                    this.score = progress.score;
+                }
+            }
+
+            saveProgress() {
+                const progress = {
+                    level: this.currentLevel,
+                    score: this.score
+                };
+                localStorage.setItem('puzzleProgress', JSON.stringify(progress));
+            }
+
+            getGridSize() {
+                return this.currentLevel === 5 ? 4 : 3; // 3x3 for levels 1-4, 4x4 for level 5
+            }
+
+            getCurrentImage() {
+                return this.images[this.currentLevel - 1];
+            }
+
+            initializeLevel() {
+                const size = this.getGridSize();
+                this.grid = [];
+                this.moves = 0;
+                this.isGameActive = true;
+                this.showNumbers = false;
+                this.hintContainer.style.display = 'none';
+
+                // Update UI
+                this.moveCounter.textContent = '0';
+                this.scoreDisplay.textContent = this.score;
+                this.levelDisplay.textContent = `${this.currentLevel} of 5`;
+                this.puzzle.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+
+                // Create shuffled tiles
+                const tiles = Array.from({ length: size * size - 1 }, (_, i) => i + 1);
+                tiles.push(0); // Add empty tile
+                this.shuffleTiles(tiles);
+
+                // Create grid
+                for (let i = 0; i < size; i++) {
+                    this.grid[i] = [];
+                    for (let j = 0; j < size; j++) {
+                        const index = i * size + j;
+                        const value = tiles[index];
+                        this.grid[i][j] = value;
+                        if (value === 0) {
+                            this.emptyTile = { row: i, col: j };
+                        }
+                    }
+                }
+
+                this.renderPuzzle();
+            }
+
+            shuffleTiles(tiles) {
+                let inversions;
+                let emptyPosition;
+                do {
+                    // Shuffle
+                    for (let i = tiles.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+                    }
+                    
+                    // Count inversions
+                    inversions = 0;
+                    for (let i = 0; i < tiles.length - 1; i++) {
+                        for (let j = i + 1; j < tiles.length; j++) {
+                            if (tiles[i] && tiles[j] && tiles[i] > tiles[j]) {
+                                inversions++;
+                            }
+                        }
+                    }
+                    emptyPosition = tiles.indexOf(0);
+                } while (!this.isSolvable(inversions, emptyPosition));
+            }
+
+            isSolvable(inversions, emptyPosition) {
+                const size = this.getGridSize();
+                const emptyRow = Math.floor(emptyPosition / size); // from bottom
+
+                if (size % 2 === 1) {
+                    // For 3x3 puzzle, number of inversions must be even
+                    return inversions % 2 === 0;
+                } else {
+                    // For 4x4 puzzle:
+                    // If empty row counting from bottom is even, inversions must be odd
+                    // If empty row counting from bottom is odd, inversions must be even
+                    const emptyRowFromBottom = size - Math.floor(emptyPosition / size);
+                    return (emptyRowFromBottom % 2 === 0) === (inversions % 2 === 1);
+                }
+            }
+
+            renderPuzzle() {
+                this.puzzle.innerHTML = '';
+                const size = this.getGridSize();
+                
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < size; j++) {
+                        const value = this.grid[i][j];
+                        const tile = document.createElement('div');
+                        tile.className = 'puzzle-tile' + (value === 0 ? ' empty' : '');
+                        if (this.showNumbers) {
+                            tile.classList.add('show-number');
+                        }
+                        
+                        if (value !== 0) {
+                            // Calculate position based on the value
+                            const row = Math.floor((value - 1) / size);
+                            const col = (value - 1) % size;
+                            
+                            // Set background image and position
+                            tile.style.backgroundImage = `url(${this.getCurrentImage()})`;
+                            tile.style.backgroundSize = `${size * 100}%`;
+                            
+                            // Calculate exact percentages for background position
+                            const xPercent = (col / (size - 1)) * 100;
+                            const yPercent = (row / (size - 1)) * 100;
+                            tile.style.backgroundPosition = `${xPercent}% ${yPercent}%`;
+                            
+                            // Add the number as a data attribute
+                            tile.setAttribute('data-number', value);
+                        }
+
+                        tile.addEventListener('click', () => this.handleTileClick(i, j));
+                        this.puzzle.appendChild(tile);
+                    }
+                }
+            }
+
+            handleTileClick(row, col) {
+                if (!this.isGameActive) return;
+                
+                if (this.isAdjacent(row, col)) {
+                    this.swapTiles(row, col);
+                    this.moves++;
+                    this.moveCounter.textContent = this.moves;
+                    
+                    if (this.checkWin()) {
+                        this.handleWin();
+                    }
+                }
+            }
+
+            isAdjacent(row, col) {
+                return (
+                    (Math.abs(row - this.emptyTile.row) === 1 && col === this.emptyTile.col) ||
+                    (Math.abs(col - this.emptyTile.col) === 1 && row === this.emptyTile.row)
+                );
+            }
+
+            swapTiles(row, col) {
+                const temp = this.grid[row][col];
+                this.grid[row][col] = 0;
+                this.grid[this.emptyTile.row][this.emptyTile.col] = temp;
+                this.emptyTile = { row, col };
+                this.renderPuzzle();
+            }
+
+            checkWin() {
+                const size = this.getGridSize();
+                let value = 1;
+                
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < size; j++) {
+                        if (i === size - 1 && j === size - 1) {
+                            if (this.grid[i][j] !== 0) return false;
+                        } else {
+                            if (this.grid[i][j] !== value++) return false;
+                        }
+                    }
+                }
+                
+                return true;
+            }
+
+            handleWin() {
+                this.isGameActive = false;
+                const basePoints = this.currentLevel === 5 ? 40 : 20;
+                const pointsEarned = basePoints + Math.max(0, 50 - this.moves);
+                this.score += pointsEarned;
+                this.scoreDisplay.textContent = this.score;
+                this.saveProgress();
+
+                this.hintContainer.style.display = 'none';
+                this.showNumbers = false;
+
+                const endImage = document.getElementById('endImage');
+                endImage.style.display = 'none';
+
+                if (this.currentLevel < 5) {
+                    this.showMessage(
+                        '過關啦!',
+                        `妳獲得 ${pointsEarned} OLA幣!`
+                    );
+                    this.currentLevel++;
+                    setTimeout(() => {
+                        this.hideMessage();
+                        this.initializeLevel();
+                    }, 2000);
+                } else {
+                    endImage.style.display = 'block';
+                    this.showMessage(
+                        '太強啦!',
+                        `妳完成所有拼圖並獲得 ${this.score} OLA幣!`
+                    );
+                }
+            }
+
+            showMessage(title, text) {
+                this.messageTitle.textContent = title;
+                this.messageText.textContent = text;
+                this.messageOverlay.style.display = 'flex';
+            }
+
+            hideMessage() {
+                this.messageOverlay.style.display = 'none';
+            }
+
+            toggleHint() {
+                const isVisible = this.hintContainer.style.display === 'block';
+                this.hintContainer.style.display = isVisible ? 'none' : 'block';
+                if (!isVisible) {
+                    this.hintImage.src = this.getCurrentImage();
+                }
+            }
+
+            toggleNumbers() {
+                this.showNumbers = !this.showNumbers;
+                const tiles = this.puzzle.querySelectorAll('.puzzle-tile');
+                tiles.forEach(tile => {
+                    if (this.showNumbers) {
+                        tile.classList.add('show-number');
+                    } else {
+                        tile.classList.remove('show-number');
+                    }
+                });
+            }
+
+            restartGame() {
+                this.currentLevel = 1;
+                this.score = 0;
+                this.saveProgress();
+                this.initializeLevel();
+            }
+
+            startGame() {
+                this.coverPage.style.display = 'none';
+                this.gameContainer.classList.add('active');
+                this.initializeLevel();
+            }
+        }
+
+        // Start the game when the page loads
+        window.addEventListener('load', () => {
+            new SlidingPuzzle();
+        });
+    </script>
+</body>
+</html> 
