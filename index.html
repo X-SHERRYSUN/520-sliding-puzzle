@@ -287,16 +287,11 @@
             padding: clamp(1.5rem, 4vw, 2.5rem);
             border-radius: 10px;
             text-align: center;
-            max-width: min(80%, 500px);
+            max-width: min(90%, 1600px);
             width: 90%;
-        }
-
-        .end-image {
-            width: min(300px, 80vw);
-            height: min(300px, 80vw);
-            border-radius: 10px;
-            margin: clamp(1rem, 3vh, 1.5rem) auto;
-            display: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .message-title {
@@ -308,6 +303,23 @@
         .message-text {
             font-size: clamp(1rem, 2.5vw, 1.1rem);
             margin-bottom: clamp(1rem, 3vh, 1.5rem);
+        }
+
+        .end-image {
+            width: 1536px;
+            height: 1024px;
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin: clamp(1rem, 3vh, 1.5rem) auto;
+            display: none;
+        }
+
+        @media (max-width: 1600px) {
+            .end-image {
+                width: 100%;
+                height: auto;
+            }
         }
 
         @media (max-width: 480px) {
@@ -373,7 +385,7 @@
             <div class="message-title" id="messageTitle"></div>
             <div class="message-text" id="messageText"></div>
             <img src="end_image.png" alt="Congratulations" class="end-image" id="endImage">
-            <button id="messageButton">下一關</button>
+            <button id="messageButton" style="display: none;">下一關</button>
         </div>
     </div>
 
@@ -618,9 +630,12 @@
                 this.showNumbers = false;
 
                 const endImage = document.getElementById('endImage');
+                const messageButton = document.getElementById('messageButton');
                 endImage.style.display = 'none';
+                messageButton.style.display = 'none';
 
                 if (this.currentLevel < 5) {
+                    messageButton.style.display = 'block';
                     this.showMessage(
                         '過關啦!',
                         `妳獲得 ${pointsEarned} OLA幣!`
