@@ -694,6 +694,10 @@
             startGame() {
                 this.coverPage.style.display = 'none';
                 this.gameContainer.classList.add('active');
+                this.currentLevel = 1;
+                this.score = 0;
+                this.scoreDisplay.textContent = '0';
+                this.saveProgress();
                 this.initializeLevel();
             }
         }
